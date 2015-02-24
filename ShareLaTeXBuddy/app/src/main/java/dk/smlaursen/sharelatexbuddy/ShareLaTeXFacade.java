@@ -54,7 +54,7 @@ public class ShareLaTeXFacade {
      * @throws javax.security.auth.login.LoginException if the user is not logged in
      * @throws java.lang.UnsupportedOperationException if ShareLaTeX could not execute our request for some reason.
      * @return HashMap<String,String> mapping between project names and ids*/
-    public static HashMap<String, String> getMapOfProjects() throws IOException,LoginException,UnsupportedOperationException{
+    public static synchronized HashMap<String, String> getMapOfProjects() throws IOException,LoginException,UnsupportedOperationException{
         String url = baseUrl+"/api/project";
 
         URL obj = new URL(url);
@@ -108,7 +108,7 @@ public class ShareLaTeXFacade {
      * @throws java.io.IOException When ShareLaTeX is unreachable
      * @throws javax.security.auth.login.LoginException if the user is not logged in properly
      * @throws java.lang.UnsupportedOperationException if ShareLaTeX could not execute our request for some reason.*/
-    public static void compilePDF(String id) throws IOException, LoginException, UnsupportedOperationException{
+    public static synchronized void compilePDF(String id) throws IOException, LoginException, UnsupportedOperationException{
         String url = baseUrl+"/api/project/"+id+"/compile";
         URL obj = new URL(url);
         HttpURLConnection con = (HttpURLConnection) obj.openConnection();
@@ -148,7 +148,7 @@ public class ShareLaTeXFacade {
      * @throws javax.security.auth.login.LoginException if the user is not logged in properly
      * @throws java.lang.UnsupportedOperationException if ShareLaTeX could not execute our request for some reason.
      * @return the retrieved PDF-File*/
-    public static File retrievePDF(String id) throws IOException, LoginException, UnsupportedOperationException{
+    public static synchronized File retrievePDF(String id) throws IOException, LoginException, UnsupportedOperationException{
         String url = baseUrl+"/api/project/"+id+"/output/output.pdf";
         URL obj = new URL(url);
         HttpURLConnection con = (HttpURLConnection) obj.openConnection();

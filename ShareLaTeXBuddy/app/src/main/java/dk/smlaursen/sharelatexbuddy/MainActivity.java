@@ -39,8 +39,6 @@ public class MainActivity extends ActionBarActivity {
     private ArrayList<String> mProjectsListFile = new ArrayList<String>();
     private ArrayAdapter myArrayAdapter;
 
-    private ShareLaTeXAuthenticator mAuthenticator;
-
     private boolean isBusy = false;
 
     @Override
@@ -79,11 +77,12 @@ public class MainActivity extends ActionBarActivity {
                 new GetProjectsTask().execute();
             }
         });
-        mAuthenticator = new ShareLaTeXAuthenticator(getContext());
-        mAuthenticator.useCredentials("test@test.dk", "testtest");
-        mAuthenticator.storeCredentials();
-        mAuthenticator.loadCredentials();
-        Authenticator.setDefault(mAuthenticator);
+        ShareLaTeXAuthenticatorFactory.setContext(getContext());
+
+
+        //Load previously stored credentials
+        ShareLaTeXAuthenticatorFactory.loadCredentials();
+        Authenticator.setDefault(ShareLaTeXAuthenticatorFactory.getAuthenticator());
         CookieManager cookieManager = new CookieManager();
         CookieHandler.setDefault(cookieManager);
     }
@@ -120,13 +119,11 @@ public class MainActivity extends ActionBarActivity {
             case R.id.action_logout:
                 Log.d("LogOut","Performing logout");
                 //Clear last used credentials :
-                mAuthenticator.clearCredentials();
+                ShareLaTeXAuthenticatorFactory.clearCredentials();
                 mProjectsListFile.clear();
                 mProjectsMap.clear();
                 myArrayAdapter.notifyDataSetChanged();
-
-                //TODO Go to login screen here
-
+                goToLoginScreen();
                 return true;
             default :
                 return super.onOptionsItemSelected(item);
@@ -137,22 +134,27 @@ public class MainActivity extends ActionBarActivity {
         return this;
     }
 
+    private void goToLoginScreen(){
+        Log.d("MainActivity","Going to login screen");
+        Intent intent = new Intent(this, LoginActivity.class);
+        startActivity(intent);
+    }
+
     /** Helper method for displaying Errors, and routing to LoginScreen if LoginException*/
     private void presentReasonForFailure(String failure, final Exception exception){
         AlertDialog ad = new AlertDialog.Builder(getContext()).create();
         ad.setCancelable(false); // This blocks the 'BACK' button
-        ad.setMessage(failure+" :\n"+exception.getMessage());
+        ad.setMessage(failure + " :\n" + exception.getMessage());
         ad.setButton(DialogInterface.BUTTON_POSITIVE, "OK", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 dialog.dismiss();
                 //Go to Login Screen and try to login
                 if (exception instanceof LoginException) {
-                    //TODO Go To Login Screen Here
+                    goToLoginScreen();
                 }
             }
         });
-        ad.setIcon(android.R.drawable.ic_dialog_alert);
         ad.show();
     }
 
