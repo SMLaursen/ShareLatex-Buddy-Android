@@ -1,10 +1,13 @@
 package dk.smlaursen.sharelatexbuddy;
 
 import android.app.AlertDialog;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.widget.SwipeRefreshLayout;
@@ -17,6 +20,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
+import java.io.File;
 import java.net.Authenticator;
 import java.net.CookieHandler;
 import java.net.CookieManager;
@@ -59,7 +63,9 @@ public class MainActivity extends ActionBarActivity {
                 Log.d("OnItemClick", "User selected on item " + mProjectsListFile.get(position) + (mSwipeLayout.isRefreshing() ? "Ignored, busy with other task" : ""));
                 //Ignore subsequent clicks while loading
                 if(!isBusy){
-                    //TODO
+                    //Convert to projectID
+                    String projectID = mProjectsMap.get(mProjectsListFile.get(position));
+                    new displayPDFTask().execute(projectID);
                 }
             }
         });
@@ -74,9 +80,9 @@ public class MainActivity extends ActionBarActivity {
             }
         });
         mAuthenticator = new ShareLaTeXAuthenticator(getContext());
-        mAuthenticator.setCredentials("test@test.dk", "testtest");
+        mAuthenticator.useCredentials("sune1987@gmail.com", "3KHv9Kpe");
+        mAuthenticator.storeCredentials();
         mAuthenticator.loadCredentials();
-
         Authenticator.setDefault(mAuthenticator);
         CookieManager cookieManager = new CookieManager();
         CookieHandler.setDefault(cookieManager);
@@ -87,7 +93,7 @@ public class MainActivity extends ActionBarActivity {
         super.onStart();
 
         //If not already refreshing
-        if(isBusy){
+        if(!isBusy){
             Log.d("OnStart called","Refreshing project list");
             new GetProjectsTask().execute();
         }
@@ -131,6 +137,26 @@ public class MainActivity extends ActionBarActivity {
         return this;
     }
 
+    /** Helper method for displaying Errors, and routing to LoginScreen if LoginException*/
+    private void presentReasonForFailure(String failure, final Exception exception){
+        AlertDialog ad = new AlertDialog.Builder(getContext()).create();
+        ad.setCancelable(false); // This blocks the 'BACK' button
+        ad.setMessage(failure+" :\n"+exception.getMessage());
+        ad.setButton(DialogInterface.BUTTON_POSITIVE, "OK", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.dismiss();
+                //Go to Login Screen and try to login
+                if (exception instanceof LoginException) {
+                    //TODO Go To Login Screen Here
+                }
+            }
+        });
+        ad.setIcon(android.R.drawable.ic_dialog_alert);
+        ad.show();
+    }
+
+    /** This task retrieves all projects visible to the user and displays them on the listview*/
     private class GetProjectsTask extends AsyncTask<Void, Void, Exception> {
         @Override
         protected void onPreExecute() {
@@ -141,7 +167,7 @@ public class MainActivity extends ActionBarActivity {
         protected Exception doInBackground(Void...arg0){
             //Retrieve the projects and return the exception if not possible
             try {
-                mProjectsMap = ShareLaTeXFacade.getInstance().getMapOfProjects();
+                mProjectsMap = ShareLaTeXFacade.getMapOfProjects();
                 return null;
             } catch (Exception e){
                 Log.d(this.getClass().getSimpleName(),"Got Exception "+e.getClass()+" "+e.getMessage());
@@ -161,21 +187,55 @@ public class MainActivity extends ActionBarActivity {
             //Present reason to user
             else {
                 Log.d("GetProjecTask","Showing alertdialog with message "+exception.getMessage());
-                AlertDialog ad = new AlertDialog.Builder(getContext()).create();
-                ad.setCancelable(false); // This blocks the 'BACK' button
-                ad.setMessage("Unable to retrieve projects :\n" + exception.getClass().getSimpleName() + " : " + exception.getMessage());
-                ad.setButton(DialogInterface.BUTTON_POSITIVE, "OK", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        dialog.dismiss();
-                        //Go to Login Screen and try to login
-                        if (exception instanceof LoginException) {
-                            //TODO Go To Login Screen Here
-                        }
-                    }
-                });
-                ad.setIcon(android.R.drawable.ic_dialog_alert);
-                ad.show();
+                presentReasonForFailure("Unable to retrieve projects", exception);
+            }
+            isBusy = false;
+        }
+    }
+    /** This task takes a specified project and compile,download and displays it*/
+    private class displayPDFTask extends AsyncTask<String, Void, Exception> {
+        private File pdfFile;
+
+        @Override
+        protected void onPreExecute() {
+            isBusy = true;
+            mSwipeLayout.setRefreshing(true);
+        }
+        @Override
+        protected Exception doInBackground(String...arg0){
+            String id = arg0[0].toString();
+            //Retrieve the projects and return the exception if not possible
+            try {
+                Log.d(this.getClass().getSimpleName(),"compiling "+id);
+                ShareLaTeXFacade.compilePDF(id);
+
+                Log.d(this.getClass().getSimpleName(),"retrieving compiled "+id);
+                pdfFile = ShareLaTeXFacade.retrievePDF(id);
+
+                //return no exceptions
+                return null;
+            } catch (Exception e){
+                Log.d(this.getClass().getSimpleName(),"Got Exception "+e.getClass()+" "+e.getMessage());
+                return e;
+            }
+        }
+        @Override
+        protected void onPostExecute(final Exception exception){
+            //If succeded display pdfFile
+            mSwipeLayout.setRefreshing(false);
+            if(exception == null){
+                try{
+                    Log.d(this.getClass().getSimpleName(), "Displaying File " + pdfFile.getName());
+                    Intent intent = new Intent(Intent.ACTION_VIEW);
+                    intent.setDataAndType(Uri.fromFile(pdfFile), "application/pdf");
+                    startActivity(intent);
+                } catch (ActivityNotFoundException e){
+                    presentReasonForFailure("Could not display downloaded pdf", e);
+                }
+            }
+            //Present reason to user
+            else {
+                presentReasonForFailure("Could not display pdf", exception);
             }
             isBusy = false;
         }
