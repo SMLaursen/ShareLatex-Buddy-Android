@@ -22,6 +22,11 @@ public class ShareLaTeXAuthenticator extends Authenticator {
         mContext = c;
     }
 
+    public void useCredentials(String user, String pass){
+        mUser = user;
+        mPass = pass;
+    }
+
     public void clearCredentials() {
         SharedPreferences prefs = mContext.getSharedPreferences(PREF_NAME, mContext.MODE_PRIVATE);
         SharedPreferences.Editor editor = prefs.edit();
@@ -32,11 +37,11 @@ public class ShareLaTeXAuthenticator extends Authenticator {
         mPass = "";
     }
 
-    public void setCredentials(String user, String pass) {
+    public void storeCredentials() {
         SharedPreferences prefs = mContext.getSharedPreferences(PREF_NAME, mContext.MODE_PRIVATE);
         SharedPreferences.Editor editor = prefs.edit();
-        editor.putString(PREF_USERNAME,user);
-        editor.putString(PREF_PASSWORD,pass);
+        editor.putString(PREF_USERNAME,mUser);
+        editor.putString(PREF_PASSWORD,mPass);
         editor.apply();
     }
 
