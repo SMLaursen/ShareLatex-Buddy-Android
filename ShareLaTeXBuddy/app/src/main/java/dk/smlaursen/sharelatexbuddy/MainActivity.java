@@ -80,7 +80,7 @@ public class MainActivity extends ActionBarActivity {
             }
         });
         mAuthenticator = new ShareLaTeXAuthenticator(getContext());
-        mAuthenticator.useCredentials("sune1987@gmail.com", "3KHv9Kpe");
+        mAuthenticator.useCredentials("test@test.dk", "testtest");
         mAuthenticator.storeCredentials();
         mAuthenticator.loadCredentials();
         Authenticator.setDefault(mAuthenticator);
